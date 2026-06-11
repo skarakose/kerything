@@ -156,8 +156,6 @@ QVariant FileModel::data(const QModelIndex &index, int role) const {
             return QString::fromStdString(m_db->getFullPath(rec.parentRecordIdx));
         }
         case 2: // Size: Formatted according to the user's locale
-            if (rec.isDir) return QString("<DIR>");
-
             if (rec.size < 1024) {
                 return QString::number(rec.size) + "B";
             } else {

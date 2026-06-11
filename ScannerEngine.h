@@ -191,6 +191,33 @@ namespace ScannerEngine {
             flatIndex.shrink_to_fit();
         }
 
+        void calculateDirectorySizes() {
+            // 1. Reset all directory sizes to 0
+            for (auto& rec : records) {
+                if (rec.isDir) {
+                    rec.size = 0;
+                }
+            }
+
+            // 2. Accumulate file sizes up parent directory chains
+            for (const auto& rec : records) {
+                if (!rec.isDir) {
+                    uint32_t current = rec.parentRecordIdx;
+                    uint32_t depth = 0;
+                    while (current != 0xFFFFFFFF && depth < 1000) {
+                        records[current].size += rec.size;
+                        
+                        uint32_t next = records[current].parentRecordIdx;
+                        if (next == current) {
+                            break; // Loop guard
+                        }
+                        current = next;
+                        depth++;
+                    }
+                }
+            }
+        }
+
         [[nodiscard]] std::string getFullPath(const uint32_t recordIdx) const {
             std::vector<uint32_t> chain;
             uint32_t current = recordIdx;

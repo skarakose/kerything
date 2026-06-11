@@ -374,6 +374,7 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
 
 void MainWindow::setDatabase(ScannerEngine::SearchDatabase&& database, QString mountPath, QString devicePath, const QString& fsType) {
   db = std::move(database);
+  db.calculateDirectorySizes();
 
   // Remove UI placeholder when partition is not mounted
   if (mountPath == "Not Mounted") {
