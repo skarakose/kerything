@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 #include "ScannerEngine.h"
+#include "FilterState.h"
 
 class FileModel;
 
@@ -59,6 +60,11 @@ private slots:
      * @brief Tracks which row is currently hovered so we can paint a full-row hover highlight.
      */
     void onTableHovered(const QModelIndex& index);
+
+    /**
+     * @brief Triggered when a filter icon in the table header is clicked.
+     */
+    void onHeaderFilterClicked(int logicalIndex, QPoint globalPos);
 
     /**
      * @brief Triggered when the search text changes. Performs a trigram search and updates the view.
@@ -134,6 +140,8 @@ private:
     QTableView *tableView;
     FileModel *model;
     QLabel *statusLabel;
+    
+    FilterState m_filterState;
 
     int m_hoveredRow = -1;
 };

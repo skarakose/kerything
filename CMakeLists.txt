@@ -62,6 +62,11 @@ add_executable(kerything
         main.cpp
         FileModel.cpp
         FileModel.h
+        FilterState.h
+        FilterDialogs.cpp
+        FilterDialogs.h
+        FilterHeaderView.cpp
+        FilterHeaderView.h
         GuiUtils.cpp
         GuiUtils.h
         MainWindow.cpp
