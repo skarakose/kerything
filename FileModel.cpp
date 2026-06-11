@@ -158,11 +158,17 @@ QVariant FileModel::data(const QModelIndex &index, int role) const {
         case 2: // Size: Formatted according to the user's locale
             if (rec.isDir) return QString("<DIR>");
 
-            // Format as bytes/KB/MB etc, with 2 decimal places
-            //return QLocale().formattedDataSize(rec.size, 2, QLocale::DataSizeTraditionalFormat);
-
-            // Formats the raw byte count with appropriate thousands separators
-            return QLocale().toString(static_cast<qlonglong>(rec.size));
+            if (rec.size < 1024) {
+                return QString::number(rec.size) + "B";
+            } else {
+                double s = static_cast<double>(rec.size) / 1024.0;
+                QString unit = "KB";
+                if (s >= 1024.0) { s /= 1024.0; unit = "MB"; }
+                if (s >= 1024.0) { s /= 1024.0; unit = "GB"; }
+                if (s >= 1024.0) { s /= 1024.0; unit = "TB"; }
+                
+                return QLocale().toString(s, 'f', 1) + unit;
+            }
         case 3: // Date: Formatted using NTFS-specific logic
         {
             if (m_fsType == "ntfs") {
