@@ -129,6 +129,26 @@ void PartitionDialog::refreshPartitions() {
         }
     }
 
+    // Find BTRFS subvolumes using QStorageInfo and ioctl
+    auto btrfsVols = GuiUtils::getAllBtrfsSubvolumes();
+    for (const auto& subvol : btrfsVols) {
+        PartitionInfo info = {
+            "btrfs",
+            subvol.name,
+            subvol.devicePath,
+            subvol.mountPoint,
+            subvol.id
+        };
+
+        auto *item = new QTreeWidgetItem(treeWidget);
+        item->setText(0, "btrfs (subvol)");
+        item->setText(1, info.name);
+        item->setText(2, info.devicePath);
+        item->setText(3, info.mountPoint);
+
+        partitions.push_back(info);
+    }
+
     treeWidget->sortByColumn(2, Qt::AscendingOrder); // Sort by device path by default
 }
 
@@ -166,7 +186,8 @@ void PartitionDialog::onStartClicked() {
         return;
     }
 
-    m_scannedDb = m_manager->scanDevice(selected.devicePath, fsTypeNormalized);
+    // For BTRFS, selected.mountPoint will be passed. For ext4/ntfs, it's ignored anyway.
+    m_scannedDb = m_manager->scanDevice(selected.devicePath, fsTypeNormalized, selected.mountPoint);
 
     if (m_scannedDb) {
         this->accept();
@@ -218,7 +239,7 @@ PartitionInfo PartitionDialog::getSelected() {
         QString dev = item->text(2);
 
         for (const auto& p : partitions) {
-            if (p.devicePath == dev) {
+            if (p.devicePath == dev && p.mountPoint == item->text(3) && p.name == item->text(1)) {
                 return p;
             }
         }
@@ -226,9 +247,15 @@ PartitionInfo PartitionDialog::getSelected() {
         return {};
     }
 
-    // Since QTreeWidget items aren't mapped 1:1 with the vector when sorted,
-    // we should reconstruct from the item text or use data roles.
-    return { item->text(0), item->text(1), item->text(2), item->text(3) };
+    // Search accurately by matching the visible text with our vector
+    for (const auto& p : partitions) {
+        if (p.devicePath == item->text(2) && p.mountPoint == item->text(3) && p.name == item->text(1)) {
+            return p;
+        }
+    }
+    
+    // Fallback if somehow not found (shouldn't happen)
+    return { item->text(0), item->text(1), item->text(2), item->text(3), 0 };
 }
 
 // QList<PartitionInfo> PartitionDialog::getSelectedPartitions() {

@@ -3,6 +3,13 @@
 
 #include "GuiUtils.h"
 #include <ctime>
+#include <QStorageInfo>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/btrfs.h>
+#include <set>
+#include <cstring>
 
 namespace GuiUtils {
 
@@ -14,7 +21,41 @@ namespace GuiUtils {
         if (t.contains("ext4")) {
             return QStringLiteral("ext4");
         }
+        if (t.contains("btrfs")) {
+            return QStringLiteral("btrfs");
+        }
         return {};
+    }
+
+    QList<BtrfsSubvolume> getAllBtrfsSubvolumes() {
+        QList<BtrfsSubvolume> btrfsList;
+        std::set<uint64_t> seenIds;
+        auto volumes = QStorageInfo::mountedVolumes();
+        
+        for (const auto& vol : volumes) {
+            if (vol.fileSystemType() == "btrfs") {
+                QString mp = vol.rootPath();
+                int fd = open(mp.toUtf8().constData(), O_RDONLY | O_DIRECTORY);
+                if (fd < 0) continue;
+
+                struct btrfs_ioctl_get_subvol_info_args info;
+                memset(&info, 0, sizeof(info));
+                
+                if (ioctl(fd, BTRFS_IOC_GET_SUBVOL_INFO, &info) >= 0) {
+                    if (seenIds.find(info.treeid) == seenIds.end()) {
+                        seenIds.insert(info.treeid);
+                        BtrfsSubvolume subvol;
+                        subvol.id = info.treeid;
+                        subvol.name = QString::fromUtf8(info.name);
+                        subvol.mountPoint = mp;
+                        subvol.devicePath = QString::fromUtf8(vol.device());
+                        btrfsList.append(subvol);
+                    }
+                }
+                close(fd);
+            }
+        }
+        return btrfsList;
     }
 
     std::string uint64ToFormattedTime(const uint64_t timeSeconds) {

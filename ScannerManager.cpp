@@ -17,7 +17,7 @@ ScannerManager::~ScannerManager() {
     requestCancel();
 }
 
-std::optional<ScannerEngine::SearchDatabase> ScannerManager::scanDevice(const QString &devicePath, const QString &fsType) {
+std::optional<ScannerEngine::SearchDatabase> ScannerManager::scanDevice(const QString &devicePath, const QString &fsType, const QString &mountPoint) {
     m_isRunning = true;
     m_cancelRequested = false;
     Q_EMIT scannerStarted();
@@ -32,7 +32,11 @@ std::optional<ScannerEngine::SearchDatabase> ScannerManager::scanDevice(const QS
 
     // Launch helper
     qDebug() << "Launching helper:" << helperPath << "on" << devicePath << "type:" << fsType;
-    helper->start("pkexec", {helperPath, devicePath, fsType});
+    QStringList args = {helperPath, devicePath, fsType};
+    if (!mountPoint.isEmpty() && fsType == "btrfs") {
+        args << mountPoint;
+    }
+    helper->start("pkexec", args);
 
     QByteArray rawData;
     rawData.reserve(1024 * 1024 * 16); // start with 16 MiB to reduce early reallocations

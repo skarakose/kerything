@@ -388,7 +388,7 @@ void MainWindow::rescanPartition() {
     }
 
     const QString t = m_fsType.trimmed().toLower();
-    if (t != QStringLiteral("ntfs") && t != QStringLiteral("ext4")) {
+    if (t != QStringLiteral("ntfs") && t != QStringLiteral("ext4") && t != QStringLiteral("btrfs")) {
         QMessageBox::warning(
             this,
             "Unsupported filesystem",
@@ -409,7 +409,7 @@ void MainWindow::rescanPartition() {
         QMessageBox::critical(nullptr, title, msg);
     });
 
-    auto newDb = manager.scanDevice(m_devicePath, m_fsType);
+    auto newDb = manager.scanDevice(m_devicePath, m_fsType, m_mountPath);
 
     if (newDb) {
         setDatabase(std::move(*newDb), m_mountPath, m_devicePath, m_fsType);

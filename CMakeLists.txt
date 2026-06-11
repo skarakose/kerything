@@ -43,6 +43,8 @@ add_executable(kerything-scanner-helper
         scanners/NtfsScannerEngine.h
         scanners/Ext4ScannerEngine.cpp
         scanners/Ext4ScannerEngine.h
+        scanners/BtrfsScannerEngine.cpp
+        scanners/BtrfsScannerEngine.h
         ScannerUtils.cpp
         ScannerUtils.h
         Version.h

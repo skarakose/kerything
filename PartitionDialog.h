@@ -23,6 +23,7 @@ struct PartitionInfo {
     QString name;
     QString devicePath;
     QString mountPoint;
+    uint64_t subvolId = 0; // 0 means not a btrfs subvolume
 };
 
 /**

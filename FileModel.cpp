@@ -167,11 +167,10 @@ QVariant FileModel::data(const QModelIndex &index, int role) const {
         {
             if (m_fsType == "ntfs") {
                 return QString::fromStdString(GuiUtils::ntfsTimeToLocalStr(rec.modificationTime));
-            }
-            if (m_fsType == "ext4") {
+            } else {
+                // both ext4 and btrfs use unix epoch seconds
                 return QString::fromStdString(GuiUtils::uint64ToFormattedTime(rec.modificationTime));
             }
-            return QString::fromStdString(std::to_string(rec.modificationTime));
         }
         default:
             return {};

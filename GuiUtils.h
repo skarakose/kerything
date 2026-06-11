@@ -6,9 +6,19 @@
 
 #include <QString>
 #include <string>
+#include <QList>
 #include <cstdint>
 
 namespace GuiUtils {
+    struct BtrfsSubvolume {
+        QString name;
+        uint64_t id;
+        QString mountPoint;
+        QString devicePath;
+    };
+
+    QList<BtrfsSubvolume> getAllBtrfsSubvolumes();
+
     /**
      * Normalizes a filesystem type string to a standard format.
      *

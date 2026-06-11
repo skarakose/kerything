@@ -12,22 +12,25 @@
 #include <linux/limits.h>
 #include <sys/stat.h>
 
+#include "scanners/BtrfsScannerEngine.h"
 #include "scanners/NtfsScannerEngine.h"
 #include "scanners/Ext4ScannerEngine.h"
+#include "ScannerUtils.h"
 #include "Version.h"
 
 static void printUsage(const char* argv0) {
     std::cerr
         << "Usage:\n"
         << "  " << argv0 << " --version\n"
-        << "  " << argv0 << " <devicePath> <fsType>\n"
+        << "  " << argv0 << " <devicePath> <fsType> [subvolId]\n"
         << "Where:\n"
         << "  <devicePath> is a block device path like /dev/sdXN or /dev/nvme0n1pN\n"
-        << "  <fsType> is one of: ntfs, ext4\n";
+        << "  <fsType> is one of: ntfs, ext4, btrfs\n"
+        << "  [subvolId] is an optional subvolume ID for btrfs\n";
 }
 
 static bool isAllowedFsType(std::string_view fsType) {
-    return fsType == "ntfs" || fsType == "ext4";
+    return fsType == "ntfs" || fsType == "ext4" || fsType == "btrfs";
 }
 
 static bool validateDevicePath(const std::string& inputPath, std::string& resolvedOut) {
@@ -227,13 +230,18 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    if (argc != 3) {
+    if (argc < 3 || argc > 4) {
         printUsage(argv[0]);
         return 64; // EX_USAGE
     }
 
     std::string devicePathInput = argv[1];
     std::string_view fsType = argv[2];
+    
+    uint64_t subvolId = 0;
+    if (argc == 4) {
+        subvolId = std::strtoull(argv[3], nullptr, 10);
+    }
 
     if (!isAllowedFsType(fsType)) {
         std::cerr << "Error: unsupported fsType '" << fsType << "'.\n";
@@ -256,6 +264,49 @@ int main(int argc, char* argv[]) {
     }
     if (fsType == "ext4") {
         return scanExt4(devicePath);
+    }
+    if (fsType == "btrfs") {
+        std::string mountPoint = (argc == 4) ? argv[3] : "";
+        if (mountPoint.empty()) {
+            std::cerr << "Error: mountPoint is required for BTRFS scanning.\n";
+            return 64;
+        }
+        
+        ProgressReporter reporter;
+        std::optional<BtrfsScannerEngine::BtrfsDatabase> btrfsDb = BtrfsScannerEngine::scanDirectory(mountPoint, reporter);
+        if (!btrfsDb) {
+            return 2;
+        }
+
+        // 1. Write the number of records
+        uint64_t recordCount = btrfsDb->records.size();
+        if (!safeWriteAll(reinterpret_cast<const char*>(&recordCount), sizeof(recordCount))) {
+            std::cerr << "Error: failed writing recordCount to stdout.\n";
+            return 3;
+        }
+
+        // 2. Write the raw vector data
+        const auto recordBytes = static_cast<std::streamsize>(recordCount * sizeof(ScannerEngine::FileRecord));
+        if (!safeWriteAll(reinterpret_cast<const char*>(btrfsDb->records.data()), recordBytes)) {
+            std::cerr << "Error: failed writing records to stdout.\n";
+            return 3;
+        }
+
+        // 3. Write the size of the string pool
+        uint64_t poolSize = btrfsDb->stringPool.size();
+        if (!safeWriteAll(reinterpret_cast<const char*>(&poolSize), sizeof(poolSize))) {
+            std::cerr << "Error: failed writing poolSize to stdout.\n";
+            return 3;
+        }
+
+        // 4. Write the string pool itself
+        if (!safeWriteAll(btrfsDb->stringPool.data(), static_cast<std::streamsize>(poolSize))) {
+            std::cerr << "Error: failed writing stringPool to stdout.\n";
+            return 3;
+        }
+
+        std::cout.flush();
+        return std::cout ? 0 : 3;
     }
 
     return 64;
