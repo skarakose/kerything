@@ -111,6 +111,9 @@ install(PROGRAMS net.reikooters.kerything.desktop DESTINATION ${KDE_INSTALL_APPD
 # Install the Polkit policy
 install(FILES net.reikooters.kerything.policy DESTINATION ${KDE_INSTALL_DATADIR}/polkit-1/actions)
 
+# Install the Polkit rule for passwordless execution
+install(FILES net.reikooters.kerything.rules DESTINATION ${KDE_INSTALL_DATADIR}/polkit-1/rules.d)
+
 # Install the license file
 install(FILES LICENSE DESTINATION share/licenses/kerything)
 
