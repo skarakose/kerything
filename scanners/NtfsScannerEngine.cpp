@@ -332,6 +332,11 @@ namespace NtfsScannerEngine {
         // Step 1: Read the boot sector to find the start of the MFT
         disk.read(reinterpret_cast<char*>(&boot), sizeof(boot));
 
+        if (!disk) {
+            std::cerr << "Error: Failed to read boot sector.\n";
+            return std::nullopt;
+        }
+
         if (std::string(boot.oemID, 8) != "NTFS    ") {
             std::cerr << "Error: " << devicePath << " does not appear to be a valid NTFS partition.\n";
             std::cerr << "OEM ID found: [" << std::string(boot.oemID, 8) << "]\n";
@@ -364,6 +369,12 @@ namespace NtfsScannerEngine {
         // Step 2: Read MFT Record 0 (The MFT's own entry) to find all fragments of the MFT.
         disk.seekg(mftOffset);
         disk.read(buffer.data(), recordSize);
+
+        if (!disk) {
+            std::cerr << "Error: Failed to read MFT Record 0.\n";
+            return std::nullopt;
+        }
+
         auto* mftHeader = reinterpret_cast<MFT_RecordHeader*>(buffer.data());
 
         uint32_t mftAttrOffset = mftHeader->firstAttributeOffset;
@@ -422,6 +433,12 @@ namespace NtfsScannerEngine {
                 uint64_t toRead = std::min(batchSizeInRecords, recordsInRun - r);
                 disk.seekg(runOffset + (r * recordSize));
                 disk.read(batchBuffer.data(), toRead * recordSize);
+
+                if (!disk) {
+                    uint64_t bytesRead = disk.gcount();
+                    toRead = bytesRead / recordSize;
+                    disk.clear(); // Clear the error state so future reads/seeks can work
+                }
 
                 for (uint64_t i = 0; i < toRead; ++i) {
                     ++scannedRecords;
@@ -492,7 +509,11 @@ namespace NtfsScannerEngine {
 
             auto it = mftToRecordIdx.find(parentMft);
             if (it != mftToRecordIdx.end()) {
-                records[i].parentRecordIdx = it->second;
+                if (it->second == i) {
+                    records[i].parentRecordIdx = 0xFFFFFFFF;
+                } else {
+                    records[i].parentRecordIdx = it->second;
+                }
             } else {
                 // If parent isn't in our DB (like MFT Index 5's parent), mark as root
                 records[i].parentRecordIdx = 0xFFFFFFFF;
